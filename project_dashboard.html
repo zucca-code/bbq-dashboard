@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロジェクト ダッシュボード｜BBQイベント</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+  header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  header h1 { font-size: 22px; font-weight: 700; }
+  header h1 span { font-size: 13px; font-weight: 400; opacity: 0.6; margin-left: 10px; }
+  .header-meta { text-align: right; font-size: 13px; opacity: 0.8; line-height: 1.7; }
+  .event-countdown { font-size: 20px; font-weight: 700; color: #ff6b6b; }
+
+  .container { max-width: 1300px; margin: 0 auto; padding: 24px 20px; }
+
+  /* KPI */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-left: 4px solid #e94560; transition: transform 0.2s; }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+  .kpi-card.blue  { border-left-color: #0f3460; }
+  .kpi-card.green { border-left-color: #27ae60; }
+  .kpi-card.purple{ border-left-color: #8e44ad; }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; }
+  .kpi-value { font-size: 28px; font-weight: 700; color: #1a1a2e; }
+  .kpi-sub   { font-size: 12px; color: #aaa; margin-top: 4px; }
+
+  /* Section */
+  .section { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 24px; }
+  .section-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #f0f2f5; display: flex; align-items: center; gap: 8px; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+
+  /* Charts */
+  .chart-container { position: relative; height: 260px; }
+  .chart-container-tall { position: relative; height: 320px; }
+
+  /* Gantt */
+  .gantt-wrap { overflow-x: auto; }
+  .timeline-row { display: flex; align-items: center; margin-bottom: 8px; gap: 12px; }
+  .timeline-label { width: 190px; flex-shrink: 0; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .timeline-bar-area { flex: 1; background: #f0f2f5; border-radius: 6px; height: 30px; position: relative; min-width: 400px; }
+  .timeline-bar { position: absolute; height: 100%; border-radius: 6px; display: flex; align-items: center; padding: 0 10px; font-size: 10px; color: white; font-weight: 600; overflow: hidden; white-space: nowrap; }
+  .t-color-0 { background: linear-gradient(90deg,#0f3460,#1a5276); }
+  .t-color-1 { background: linear-gradient(90deg,#e94560,#c0392b); }
+  .t-color-2 { background: linear-gradient(90deg,#e67e22,#d35400); }
+  .t-color-3 { background: linear-gradient(90deg,#27ae60,#1e8449); }
+  .t-color-4 { background: linear-gradient(90deg,#8e44ad,#6c3483); }
+  .t-color-5 { background: linear-gradient(90deg,#2980b9,#1a6fa0); }
+
+  /* WBS Table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e9ecef; white-space: nowrap; }
+  .data-table td { padding: 9px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+  .data-table tr:hover td { background: #fafbff; }
+  .data-table .total-row td { font-weight: 700; background: #f8f9fa; border-top: 2px solid #dee2e6; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-L1 { background: #fff3cd; color: #856404; }
+  .badge-L2 { background: #d1e7dd; color: #0f5132; }
+  .badge-L3 { background: #e2e3e5; color: #41464b; }
+
+  .chip { display: inline-block; background: #e8edf5; color: #0f3460; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; margin: 1px; }
+  .chip.pm     { background: #fdebd0; color: #784212; }
+  .chip.proc   { background: #d5e8d4; color: #1e5631; }
+  .chip.field  { background: #dae8fc; color: #1a4a78; }
+  .chip.chef   { background: #e1d5e7; color: #4a235a; }
+  .chip.pmo    { background: #fff2cc; color: #7d6608; }
+
+  .wv-bar { background: #f0f2f5; border-radius: 4px; height: 6px; display: inline-block; width: 70px; overflow: hidden; vertical-align: middle; margin-left: 4px; }
+  .wv-fill { height: 100%; background: linear-gradient(90deg,#0f3460,#e94560); }
+
+  .progress-bar { background: #f0f2f5; border-radius: 6px; height: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg,#0f3460,#e94560); }
+
+  .text-right { text-align: right; }
+  .mono { font-family: 'Courier New', monospace; }
+
+  /* Org chart */
+  .org-tree { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .org-pm { background: linear-gradient(135deg,#0f3460,#1a5276); color: white; border-radius: 12px; padding: 14px 24px; text-align: center; box-shadow: 0 4px 12px rgba(15,52,96,0.3); min-width: 160px; }
+  .org-pm .role { font-size: 11px; opacity: 0.8; margin-bottom: 4px; }
+  .org-pm .name { font-size: 18px; font-weight: 700; }
+  .org-connector { width: 2px; height: 20px; background: #ccc; margin: 0 auto; }
+  .org-members { display: flex; gap: 16px; justify-content: center; }
+  .org-line { display: flex; align-items: flex-start; gap: 0; position: relative; }
+  .org-member { text-align: center; }
+  .org-card { border-radius: 10px; padding: 12px 16px; text-align: center; min-width: 130px; border: 2px solid; }
+  .org-card.proc  { background:#d5e8d4; border-color:#27ae60; color:#1e5631; }
+  .org-card.field { background:#dae8fc; border-color:#2980b9; color:#1a4a78; }
+  .org-card.chef  { background:#e1d5e7; border-color:#8e44ad; color:#4a235a; }
+  .org-card.pmo   { background:#fff2cc; border-color:#e67e22; color:#7d6608; }
+  .org-card .role { font-size: 10px; opacity: 0.8; margin-bottom: 4px; }
+  .org-card .name { font-size: 16px; font-weight: 700; }
+  .org-card .budget { font-size: 11px; margin-top: 6px; opacity: 0.9; }
+  .org-vline { width: 2px; height: 20px; background: #ccc; margin: 0 auto; }
+
+  /* Stakeholder */
+  .sh-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 24px; margin-bottom: 24px; }
+  .sh-quadrant { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; height: 280px; }
+  .sh-cell { border-radius: 10px; padding: 10px; position: relative; overflow: hidden; }
+  .sh-cell-label { font-size: 10px; font-weight: 700; opacity: 0.6; margin-bottom: 6px; }
+  .sh-q1 { background: #d5e8d4; border: 2px solid #27ae60; } /* 高影響×高関心 → Key Player */
+  .sh-q2 { background: #dae8fc; border: 2px solid #2980b9; } /* 低影響×高関心 → Keep Informed */
+  .sh-q3 { background: #fff2cc; border: 2px solid #e67e22; } /* 高影響×低関心 → Keep Satisfied */
+  .sh-q4 { background: #f0f2f5; border: 2px solid #aaa; }   /* 低影響×低関心 → Monitor */
+  .sh-dot { display: inline-flex; align-items: center; gap: 4px; background: white; border-radius: 20px; padding: 3px 8px; font-size: 11px; font-weight: 600; margin: 2px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+  .sh-axis { display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-top: 4px; }
+  .sh-y-wrap { display: flex; gap: 6px; }
+  .sh-y-label { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 10px; font-weight: 700; color: #555; white-space: nowrap; align-self: center; }
+  .engage-chip { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .engage-lead    { background: #d5e8d4; color: #1e5631; }
+  .engage-support { background: #dae8fc; color: #1a4a78; }
+  .engage-inform  { background: #fff2cc; color: #7d6608; }
+  .engage-monitor { background: #f0f2f5; color: #555; }
+
+  /* Risk */
+  .risk-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 24px; margin-bottom: 24px; }
+  .risk-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .risk-high   { background: #fde8e8; color: #c0392b; border: 1px solid #f5c6c6; }
+  .risk-mid    { background: #fef3cd; color: #856404; border: 1px solid #fde08a; }
+  .risk-low    { background: #d4edda; color: #155724; border: 1px solid #b8dfc6; }
+  .risk-score-high   { background: #e74c3c; color: white; border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 13px; }
+  .risk-score-mid    { background: #f39c12; color: white; border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 13px; }
+  .risk-score-low    { background: #27ae60; color: white; border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 13px; }
+  .status-chip { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .status-done    { background: #d4edda; color: #155724; }
+  .status-inprog  { background: #cce5ff; color: #004085; }
+  .status-pending { background: #f8d7da; color: #721c24; }
+
+  /* Risk Matrix */
+  .matrix-wrap { display: flex; align-items: flex-start; gap: 8px; }
+  .matrix-y-label { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; font-weight: 700; color: #555; text-align: center; align-self: center; white-space: nowrap; margin-right: 4px; }
+  .matrix-body { flex: 1; }
+  .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; aspect-ratio: 1; }
+  .matrix-cell { border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px; min-height: 80px; position: relative; }
+  .cell-99 { background: #e74c3c; } /* 高×高 */
+  .cell-69,.cell-96 { background: #e67e22; } /* 中高 */
+  .cell-39,.cell-93 { background: #f39c12; } /* 低高/高低 */
+  .cell-66 { background: #f39c12; } /* 中中 */
+  .cell-36,.cell-63 { background: #f1c40f; } /* 低中/中低 */
+  .cell-33 { background: #27ae60; } /* 低低 */
+  .risk-dot { background: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #1a1a2e; box-shadow: 0 1px 4px rgba(0,0,0,0.2); flex-shrink: 0; cursor: default; position: relative; }
+  .risk-dot:hover::after { content: attr(data-tip); position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; white-space: nowrap; z-index: 20; }
+  .dots-wrap { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; }
+  .matrix-col-labels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px; }
+  .matrix-col-labels span { text-align: center; font-size: 10px; color: #666; }
+  .matrix-x-label { text-align: center; font-size: 11px; font-weight: 700; color: #555; margin-top: 6px; }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    header { flex-direction: column; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🔥 BBQイベント プロジェクト<span>Project Dashboard</span></h1>
+    <div style="font-size:11px;opacity:0.5;margin-top:3px;">WBS ｜ コスト ｜ Sカーブ ｜ 組織図</div>
+  </div>
+  <div class="header-meta">
+    <div>📅 イベント日: <strong>2026年6月20日 (土)</strong></div>
+    <div id="countdown" class="event-countdown">-</div>
+    <div style="font-size:11px;opacity:0.6;">更新: <span id="lastUpdate"></span></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">総プロジェクトコスト</div>
+      <div class="kpi-value">¥31,500</div>
+      <div class="kpi-sub">全タスク合計 · 6フェーズ</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">調達・準備フェーズ</div>
+      <div class="kpi-value">¥23,500</div>
+      <div class="kpi-sub">T1〜T3 ｜ 全体の 70.0%</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">作業・消費フェーズ</div>
+      <div class="kpi-value">¥8,000</div>
+      <div class="kpi-sub">T4〜T6 ｜ 全体の 30.0%</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">イベント当日タスク</div>
+      <div class="kpi-value">4件</div>
+      <div class="kpi-sub">T3〜T6 ｜ 2026/06/20</div>
+    </div>
+  </div>
+
+  <!-- Gantt -->
+  <div class="section">
+    <div class="section-title">📅 タスクタイムライン（ガントチャート）</div>
+    <div class="gantt-wrap">
+      <div id="gantt-container"></div>
+    </div>
+  </div>
+
+  <!-- S-curve + Cost pie -->
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-title">📈 Sカーブ（累積コスト＆累積WV）</div>
+      <div class="chart-container-tall">
+        <canvas id="sCurveChart"></canvas>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">💰 タスク別コスト内訳</div>
+      <div class="chart-container-tall">
+        <canvas id="costChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Person + Org -->
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-title">👥 担当者別予算</div>
+      <div class="chart-container">
+        <canvas id="personChart"></canvas>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">🏗 組織図（プロジェクト体制）</div>
+      <div class="org-tree">
+        <div class="org-pm">
+          <div class="role">プロジェクトマネージャー (PM)</div>
+          <div class="name">Aさん</div>
+          <div style="font-size:11px;opacity:0.7;margin-top:4px;">全体統括・参加者ケア・盛り上げ</div>
+        </div>
+        <div class="org-vline"></div>
+        <div class="org-members">
+          <div class="org-member">
+            <div class="org-vline"></div>
+            <div class="org-card proc">
+              <div class="role">調達・ロジ担当</div>
+              <div class="name">Bさん</div>
+              <div class="budget">¥23,500 (70.0%)</div>
+            </div>
+          </div>
+          <div class="org-member">
+            <div class="org-vline"></div>
+            <div class="org-card field">
+              <div class="role">フィールド担当</div>
+              <div class="name">Cさん</div>
+              <div class="budget">¥3,150 (10.6%)</div>
+            </div>
+          </div>
+          <div class="org-member">
+            <div class="org-vline"></div>
+            <div class="org-card chef">
+              <div class="role">シェフ担当</div>
+              <div class="name">Dさん</div>
+              <div class="budget">¥4,350 (13.8%)</div>
+            </div>
+          </div>
+          <div class="org-member">
+            <div class="org-vline"></div>
+            <div class="org-card pmo">
+              <div class="role">PMO・会計</div>
+              <div class="name">Eさん</div>
+              <div class="budget">¥0 (0.0%)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;font-size:11px;color:#aaa;text-align:center;">
+        ※ Aさん・Eさんの人件費（労務費）はボランティア（¥0）<br>
+        共通枠（ドリンク等）¥2,300 (7.3%) はチーム全員で共有
+      </div>
+    </div>
+  </div>
+
+  <!-- WBS Table -->
+  <div class="section">
+    <div class="section-title">📋 WBS 詳細一覧</div>
+    <div class="gantt-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>WBS#</th><th>階層</th><th>タスク / 品目名</th><th>担当者</th>
+            <th>開始</th><th>終了</th><th>数量</th><th>単価</th>
+            <th class="text-right">コスト</th><th class="text-right">WV</th>
+          </tr>
+        </thead>
+        <tbody id="wbs-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Phase Summary -->
+  <div class="section">
+    <div class="section-title">📊 フェーズ別サマリー</div>
+    <table class="data-table">
+      <thead>
+        <tr><th>フェーズ</th><th>タスク名</th><th>担当</th><th class="text-right">コスト</th><th class="text-right">WV比率</th><th style="width:150px">コスト割合</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-L1">T1</span></td><td>企画・日程調整</td><td><span class="chip pm">Aさん</span><span class="chip pmo">Eさん</span></td><td class="text-right mono">¥0</td><td class="text-right">0.0%</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div></td></tr>
+        <tr><td><span class="badge badge-L1">T2</span></td><td>買い出し（食材・飲料）</td><td><span class="chip proc">Bさん</span></td><td class="text-right mono">¥12,500</td><td class="text-right">37.2%</td><td><div class="progress-bar"><div class="progress-fill" style="width:37.2%"></div></div></td></tr>
+        <tr><td><span class="badge badge-L1">T3</span></td><td>機材レンタル・搬入</td><td><span class="chip proc">Bさん</span></td><td class="text-right mono">¥11,000</td><td class="text-right">32.8%</td><td><div class="progress-bar"><div class="progress-fill" style="width:32.8%"></div></div></td></tr>
+        <tr><td><span class="badge badge-L1">T4</span></td><td>火起こし・設営</td><td><span class="chip field">Cさん</span></td><td class="text-right mono">¥2,500</td><td class="text-right">9.4%</td><td><div class="progress-bar"><div class="progress-fill" style="width:9.4%"></div></div></td></tr>
+        <tr><td><span class="badge badge-L1">T5</span></td><td>調理・乾杯・歓談</td><td><span class="chip chef">Dさん</span><span class="chip pm">Aさん</span></td><td class="text-right mono">¥4,950</td><td class="text-right">18.5%</td><td><div class="progress-bar"><div class="progress-fill" style="width:18.5%"></div></div></td></tr>
+        <tr><td><span class="badge badge-L1">T6</span></td><td>撤収・片付け</td><td><span class="chip field">Cさん</span><span class="chip pmo">Eさん</span></td><td class="text-right mono">¥550</td><td class="text-right">2.1%</td><td><div class="progress-bar"><div class="progress-fill" style="width:2.1%"></div></div></td></tr>
+        <tr class="total-row"><td colspan="3"><strong>プロジェクト総計</strong></td><td class="text-right mono"><strong>¥31,500</strong></td><td class="text-right"><strong>100.0%</strong></td><td><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Stakeholder Management -->
+  <div class="sh-grid">
+    <div class="section">
+      <div class="section-title">🤝 ステークホルダー一覧</div>
+      <div class="gantt-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>名前</th><th>役割・立場</th><th>主な関心事</th>
+              <th>影響力</th><th>関心度</th><th>関与タイプ</th>
+              <th>コミュニケーション方法</th><th>頻度</th>
+            </tr>
+          </thead>
+          <tbody id="sh-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">📊 ステークホルダーマトリクス</div>
+      <div class="sh-y-wrap">
+        <div class="sh-y-label">影響力（高↑）</div>
+        <div style="flex:1;">
+          <div class="sh-quadrant" id="sh-matrix">
+            <div class="sh-cell sh-q3"><div class="sh-cell-label">🔶 Keep Satisfied<br>高影響・低関心</div><div id="shq-hi-lo"></div></div>
+            <div class="sh-cell sh-q1"><div class="sh-cell-label">🌟 Key Players<br>高影響・高関心</div><div id="shq-hi-hi"></div></div>
+            <div class="sh-cell sh-q4"><div class="sh-cell-label">👁 Monitor<br>低影響・低関心</div><div id="shq-lo-lo"></div></div>
+            <div class="sh-cell sh-q2"><div class="sh-cell-label">📢 Keep Informed<br>低影響・高関心</div><div id="shq-lo-hi"></div></div>
+          </div>
+          <div class="sh-axis"><span>低関心</span><span>→ 関心度 →</span><span>高関心</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Risk Management -->
+  <div class="risk-grid">
+    <div class="section">
+      <div class="section-title">⚠️ リスク一覧</div>
+      <div class="gantt-wrap">
+        <table class="data-table" id="risk-table">
+          <thead>
+            <tr>
+              <th>No</th><th>リスク名</th><th>カテゴリ</th>
+              <th>発生確率</th><th>影響度</th><th>スコア</th>
+              <th>🛡 Preventive対策</th><th>🔧 ミチゲーション</th>
+              <th>対応者</th><th>期限</th><th>ステータス</th>
+            </tr>
+          </thead>
+          <tbody id="risk-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">🗺 リスクマトリクス</div>
+      <div class="matrix-wrap">
+        <div class="matrix-y-label">発生確率 →（高）</div>
+        <div class="matrix-body">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:2px;font-size:10px;color:#888;">高(3) ↑</div>
+          <div class="matrix-grid" id="risk-matrix"></div>
+          <div class="matrix-col-labels">
+            <span>低(1)</span><span>中(2)</span><span>高(3)</span>
+          </div>
+          <div class="matrix-x-label">影響度</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;">
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;background:#e74c3c;border-radius:3px;display:inline-block;"></span>重大リスク（9）</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;background:#e67e22;border-radius:3px;display:inline-block;"></span>高リスク（6）</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;background:#f39c12;border-radius:3px;display:inline-block;"></span>中リスク（4）</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;background:#27ae60;border-radius:3px;display:inline-block;"></span>低リスク（1〜3）</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ===== COUNTDOWN =====
+function updateCountdown() {
+  const diff = new Date('2026-06-20T10:00:00') - new Date();
+  if (diff <= 0) { document.getElementById('countdown').textContent = '🎉 イベント開催！'; return; }
+  const d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000);
+  document.getElementById('countdown').textContent = `あと ${d}日 ${h}時間`;
+}
+updateCountdown(); setInterval(updateCountdown, 60000);
+document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ja-JP');
+
+// ===== WBS DATA =====
+const wbsData = [
+  {id:'T1', lv:'L1', name:'企画・日程調整',       person:'Aさん(PM)/Eさん(PMO)', start:'2026/06/10 10:00',end:'2026/06/12 18:00',qty:'',unit:'',price:0,    cost:0,    wv:'0.0%'},
+  {id:'T2', lv:'L1', name:'買い出し（食材・飲料）',person:'Bさん(調達)',          start:'2026/06/19 18:00',end:'2026/06/19 20:00',qty:'',unit:'',price:0,    cost:12500,wv:'37.2%'},
+  {id:'T21',lv:'L2', name:'牛肉・豚肉セット',      person:'Bさん',               start:'',end:'',qty:'',unit:'',price:0,   cost:6000, wv:'17.9%'},
+  {id:'T211',lv:'L3',name:'牛バラ肉（焼肉用）',    person:'Bさん',               start:'',end:'',qty:1,unit:'kg',     price:3000,cost:3000, wv:'8.9%'},
+  {id:'T212',lv:'L3',name:'豚バラ肉（焼肉用）',    person:'Bさん',               start:'',end:'',qty:1,unit:'kg',     price:1500,cost:1500, wv:'4.5%'},
+  {id:'T213',lv:'L3',name:'粗挽きソーセージ',      person:'Bさん',               start:'',end:'',qty:3,unit:'パック', price:500, cost:1500, wv:'4.5%'},
+  {id:'T22',lv:'L2', name:'野菜盛り合わせ',        person:'Bさん',               start:'',end:'',qty:5,unit:'人前',   price:300, cost:1500, wv:'4.5%'},
+  {id:'T23',lv:'L2', name:'ドリンク類',            person:'Bさん',               start:'',end:'',qty:'',unit:'',price:0,   cost:5000, wv:'14.9%'},
+  {id:'T231',lv:'L3',name:'缶ビール（350ml）',      person:'Bさん',               start:'',end:'',qty:12,unit:'本',    price:250, cost:3000, wv:'8.9%'},
+  {id:'T232',lv:'L3',name:'チューハイ（350ml）',    person:'Bさん',               start:'',end:'',qty:6, unit:'本',    price:150, cost:900,  wv:'2.7%'},
+  {id:'T233',lv:'L3',name:'お茶・ジュース（2L）',   person:'Bさん',               start:'',end:'',qty:3, unit:'本',    price:200, cost:600,  wv:'1.8%'},
+  {id:'T234',lv:'L3',name:'ロックアイス',          person:'Bさん',               start:'',end:'',qty:1, unit:'袋',    price:500, cost:500,  wv:'1.5%'},
+  {id:'T3', lv:'L1', name:'機材レンタル・搬入',    person:'Bさん(調達)',          start:'2026/06/20 08:00',end:'2026/06/20 09:30',qty:'',unit:'',price:0,    cost:11000,wv:'32.8%'},
+  {id:'T31',lv:'L2', name:'BBQコンロ（中型）',      person:'Bさん',               start:'',end:'',qty:1,unit:'台',    price:2500,cost:2500, wv:'7.5%'},
+  {id:'T32',lv:'L2', name:'タープテント',          person:'Bさん',               start:'',end:'',qty:1,unit:'張',    price:5000,cost:5000, wv:'14.9%'},
+  {id:'T33',lv:'L2', name:'アウトドアテーブル等',  person:'Bさん',               start:'',end:'',qty:1,unit:'セット',price:2500,cost:2500, wv:'7.4%'},
+  {id:'T34',lv:'L2', name:'クーラーボックス',      person:'Bさん',               start:'',end:'',qty:1,unit:'個',    price:1000,cost:1000, wv:'3.0%'},
+  {id:'T4', lv:'L1', name:'火起こし・設営',        person:'Cさん(フィールド)',    start:'2026/06/20 09:30',end:'2026/06/20 11:00',qty:'',unit:'',price:0,    cost:2500, wv:'9.4%'},
+  {id:'T41',lv:'L2', name:'木炭（予備含む）',      person:'Cさん',               start:'',end:'',qty:3,unit:'kg',    price:500, cost:1500, wv:'5.6%'},
+  {id:'T42',lv:'L2', name:'着火剤・チャッカマン',  person:'Cさん',               start:'',end:'',qty:1,unit:'セット',price:500, cost:500,  wv:'1.9%'},
+  {id:'T43',lv:'L2', name:'耐熱グローブ・トング',  person:'Cさん',               start:'',end:'',qty:1,unit:'セット',price:500, cost:500,  wv:'1.9%'},
+  {id:'T5', lv:'L1', name:'調理・乾杯・歓談',      person:'Dさん(シェフ)/Aさん', start:'2026/06/20 11:00',end:'2026/06/20 17:00',qty:'',unit:'',price:0,    cost:4950, wv:'18.5%'},
+  {id:'T51',lv:'L2', name:'紙皿・割り箸等準備',    person:'Dさん',               start:'',end:'',qty:5,unit:'セット',price:100, cost:500,  wv:'1.9%'},
+  {id:'T52',lv:'L2', name:'調味料・タレ準備',      person:'Dさん',               start:'',end:'',qty:1,unit:'一式',  price:1000,cost:1000, wv:'3.7%'},
+  {id:'T53',lv:'L2', name:'肉類の調理・サーブ',    person:'Dさん',               start:'',end:'',qty:'',unit:'',price:0,   cost:1300, wv:'4.9%'},
+  {id:'T54',lv:'L2', name:'野菜の調理・サーブ',    person:'Dさん',               start:'',end:'',qty:5,unit:'人前',  price:200, cost:1000, wv:'3.7%'},
+  {id:'T55',lv:'L2', name:'ドリンク提供・消費',    person:'Dさん/Aさん',         start:'',end:'',qty:'',unit:'',price:0,   cost:1150, wv:'4.3%'},
+  {id:'T6', lv:'L1', name:'撤収・片付け',          person:'Cさん/Eさん',         start:'2026/06/20 17:00',end:'2026/06/20 18:30',qty:'',unit:'',price:0,    cost:550,  wv:'2.1%'},
+  {id:'T61',lv:'L2', name:'指定ゴミ袋への分別',    person:'Cさん',               start:'',end:'',qty:5,unit:'枚',    price:50,  cost:250,  wv:'0.9%'},
+  {id:'T62',lv:'L2', name:'機材洗浄・精算確認',    person:'Cさん/Eさん',         start:'',end:'',qty:1,unit:'セット',price:300, cost:300,  wv:'1.2%'},
+];
+
+// WBS Table
+const tbody = document.getElementById('wbs-tbody');
+wbsData.forEach(r => {
+  const indent = r.lv==='L2'?'　 ':r.lv==='L3'?'　　 ':'';
+  const wvNum = parseFloat(r.wv);
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><strong>${r.id}</strong></td>
+    <td><span class="badge badge-${r.lv}">${r.lv}</span></td>
+    <td>${indent}${r.name}</td>
+    <td>${r.person.split('/').map(p=>`<span class="chip">${p.trim()}</span>`).join('')}</td>
+    <td style="font-size:11px;white-space:nowrap;">${r.start||'—'}</td>
+    <td style="font-size:11px;white-space:nowrap;">${r.end||'—'}</td>
+    <td>${r.qty!==''?r.qty+' '+r.unit:'—'}</td>
+    <td class="text-right mono">${r.price>0?'¥'+r.price.toLocaleString():'—'}</td>
+    <td class="text-right mono">${r.cost>0?'¥'+r.cost.toLocaleString():'0'}</td>
+    <td class="text-right" style="white-space:nowrap;">${r.wv} <span class="wv-bar"><span class="wv-fill" style="width:${Math.min(wvNum*2.7,70)}px;display:block;height:100%;"></span></span></td>
+  `;
+  tbody.appendChild(tr);
+});
+
+// ===== GANTT =====
+const gc = document.getElementById('gantt-container');
+
+// T1 は期間が離れているため別途バッジ表示
+const t1Banner = document.createElement('div');
+t1Banner.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 12px;background:#eef2f8;border-radius:8px;border-left:4px solid #0f3460;';
+t1Banner.innerHTML=`
+  <span style="font-size:13px;font-weight:700;color:#0f3460;">T1</span>
+  <span style="font-size:12px;font-weight:600;">企画・日程調整</span>
+  <span style="font-size:11px;color:#888;">2026/06/10 10:00 〜 2026/06/12 18:00</span>
+  <span style="margin-left:auto;background:#0f3460;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;">完了済</span>
+`;
+gc.appendChild(t1Banner);
+
+// メインタイムライン：6/19〜6/20 に絞る
+const ganttTasks = [
+  {name:'T2 買い出し',          s:new Date('2026-06-19T18:00'),e:new Date('2026-06-19T20:00'),c:1},
+  {name:'T3 機材レンタル・搬入',s:new Date('2026-06-20T08:00'),e:new Date('2026-06-20T09:30'),c:2},
+  {name:'T4 火起こし・設営',    s:new Date('2026-06-20T09:30'),e:new Date('2026-06-20T11:00'),c:3},
+  {name:'T5 調理・乾杯・歓談',  s:new Date('2026-06-20T11:00'),e:new Date('2026-06-20T17:00'),c:4},
+  {name:'T6 撤収・片付け',      s:new Date('2026-06-20T17:00'),e:new Date('2026-06-20T18:30'),c:5},
+];
+const tMin = new Date('2026-06-19T16:00'), tMax = new Date('2026-06-20T19:30');
+const tSpan = tMax - tMin;
+
+// 時刻軸
+const dateAxis = document.createElement('div');
+dateAxis.style.cssText='position:relative;height:18px;margin-left:202px;margin-bottom:4px;';
+[
+  {l:'6/19 16:00', d:new Date('2026-06-19T16:00')},
+  {l:'18:00',      d:new Date('2026-06-19T18:00')},
+  {l:'6/20 8:00',  d:new Date('2026-06-20T08:00')},
+  {l:'11:00',      d:new Date('2026-06-20T11:00')},
+  {l:'14:00',      d:new Date('2026-06-20T14:00')},
+  {l:'17:00',      d:new Date('2026-06-20T17:00')},
+  {l:'19:30',      d:new Date('2026-06-20T19:30')},
+].forEach(x=>{
+  const pct=((x.d-tMin)/tSpan*100).toFixed(1);
+  const s=document.createElement('span');
+  s.textContent=x.l;
+  s.style.cssText=`position:absolute;left:${pct}%;font-size:10px;color:#aaa;transform:translateX(-50%);white-space:nowrap;`;
+  dateAxis.appendChild(s);
+});
+gc.appendChild(dateAxis);
+
+// 日付境界線（6/20 00:00）
+const dayBoundary = ((new Date('2026-06-20T00:00')-tMin)/tSpan*100).toFixed(2);
+
+ganttTasks.forEach(t=>{
+  const left=((t.s-tMin)/tSpan*100).toFixed(2);
+  const width=Math.max(((t.e-t.s)/tSpan*100),2).toFixed(2);
+  const div=document.createElement('div'); div.className='timeline-row';
+  div.innerHTML=`
+    <div class="timeline-label" title="${t.name}">${t.name}</div>
+    <div class="timeline-bar-area">
+      <div style="position:absolute;left:${dayBoundary}%;top:0;width:1px;height:100%;background:#0f3460;opacity:0.2;z-index:1;"></div>
+      <div class="timeline-bar t-color-${t.c}" style="left:${left}%;width:${width}%;z-index:2;">${parseFloat(width)>6?t.name.split(' ')[0]:''}</div>
+    </div>`;
+  gc.appendChild(div);
+});
+
+// 日付ラベル（6/19 / 6/20）
+const dayLbl = document.createElement('div');
+dayLbl.style.cssText='margin-left:202px;position:relative;height:16px;margin-top:2px;';
+dayLbl.innerHTML=`
+  <span style="position:absolute;left:0;font-size:10px;color:#0f3460;font-weight:700;">◀ 6月19日（前日）</span>
+  <span style="position:absolute;left:${dayBoundary}%;font-size:10px;color:#0f3460;font-weight:700;transform:translateX(-4px);">│ 6月20日（当日）▶</span>
+`;
+gc.appendChild(dayLbl);
+
+// TODAY line
+const todayPct=((new Date()-tMin)/tSpan*100);
+if(todayPct>0&&todayPct<100){
+  document.querySelectorAll('.timeline-bar-area').forEach(a=>{
+    const l=document.createElement('div');
+    l.style.cssText=`position:absolute;left:${todayPct}%;top:0;width:2px;height:100%;background:#e94560;opacity:0.85;z-index:6;`;
+    a.appendChild(l);
+  });
+  const todayLbl=document.createElement('div');
+  todayLbl.style.cssText='margin-left:202px;position:relative;height:16px;margin-top:18px;';
+  todayLbl.innerHTML=`<span style="position:absolute;left:calc(${todayPct}% - 24px);background:#e94560;color:white;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">TODAY</span>`;
+  gc.appendChild(todayLbl);
+}
+
+// ===== S-CURVE =====
+const sCurveCtx = document.getElementById('sCurveChart').getContext('2d');
+new Chart(sCurveCtx, {
+  type: 'bar',
+  data: {
+    labels: ['6/12\n18:00\nT1', '6/19\n20:00\nT2', '6/20\n09:30\nT3', '6/20\n11:00\nT4', '6/20\n17:00\nT5', '6/20\n18:30\nT6'],
+    datasets: [
+      {
+        type: 'bar',
+        label: 'コスト(¥)',
+        data: [0, 12500, 11000, 2500, 4950, 550],
+        backgroundColor: ['#c8d8f0','#a8c8f8','#0f3460','#27ae60','#8e44ad','#2980b9'],
+        borderRadius: 4,
+        yAxisID: 'y',
+        order: 2,
+      },
+      {
+        type: 'line',
+        label: '累積コスト(¥)',
+        data: [0, 12500, 23500, 26000, 30950, 31500],
+        borderColor: '#e94560',
+        backgroundColor: 'rgba(233,69,96,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointBackgroundColor: '#e94560',
+        fill: true,
+        tension: 0.35,
+        yAxisID: 'y',
+        order: 1,
+      },
+      {
+        type: 'line',
+        label: '累積WV(%)',
+        data: [0, 37.2, 70.0, 79.4, 97.9, 100.0],
+        borderColor: '#f39c12',
+        borderWidth: 2,
+        borderDash: [5,4],
+        pointRadius: 4,
+        pointBackgroundColor: '#f39c12',
+        fill: false,
+        tension: 0.35,
+        yAxisID: 'y2',
+        order: 0,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position:'bottom', labels:{ font:{size:11}, padding:10 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ctx.datasetIndex < 2
+            ? ` ¥${ctx.parsed.y.toLocaleString()}`
+            : ` ${ctx.parsed.y}%`
+        }
+      }
+    },
+    scales: {
+      y: { beginAtZero:true, position:'left', ticks:{ callback:v=>'¥'+v.toLocaleString(),font:{size:10} }, grid:{color:'#f0f2f5'}, title:{display:true,text:'コスト (¥)',font:{size:11}} },
+      y2:{ beginAtZero:true, max:100, position:'right', ticks:{ callback:v=>v+'%',font:{size:10} }, grid:{drawOnChartArea:false}, title:{display:true,text:'WV (%)',font:{size:11}} },
+      x: { grid:{display:false}, ticks:{font:{size:10}} }
+    }
+  }
+});
+
+// ===== COST PIE =====
+new Chart(document.getElementById('costChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: ['T2 食材・飲料 (37.2%)', 'T3 機材レンタル (32.8%)', 'T5 調理・歓談 (18.5%)', 'T4 火起こし (9.4%)', 'T6 撤収 (2.1%)'],
+    datasets: [{
+      data: [12500,11000,4950,2500,550],
+      backgroundColor:['#0f3460','#e94560','#8e44ad','#27ae60','#2980b9'],
+      borderWidth:3, borderColor:'#fff',
+    }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins: {
+      legend:{ position:'bottom', labels:{ font:{size:11}, padding:8 } },
+      tooltip:{ callbacks:{ label: ctx => ` ¥${ctx.parsed.toLocaleString()}` } }
+    }
+  }
+});
+
+// ===== STAKEHOLDER DATA =====
+const stakeholders = [
+  {name:'参加者（5名）',  role:'イベント参加者',     interest:'楽しい体験・食事の品質・交流・安全', influence:3, concern:3, engage:'inform',  comm:'招待メール・LINE・当日案内', freq:'開催1週前・前日・当日'},
+  {name:'機材レンタル業者', role:'BBQ機材レンタル会社', interest:'機材の正常返却・確実な支払い',    influence:2, concern:1, engage:'monitor', comm:'電話・メール',              freq:'予約時・前日確認'},
+  {name:'精肉店・スーパー', role:'食材仕入先',         interest:'売上・在庫の事前確保',             influence:1, concern:1, engage:'monitor', comm:'来店・電話注文',            freq:'買い出し当日（6/19）'},
+  {name:'会場管理者',    role:'BBQ開催場所の管理者', interest:'施設の適切な利用・ゴミ処理・原状回復', influence:3, concern:2, engage:'support', comm:'電話・現地確認',            freq:'予約時・前日・終了後'},
+];
+
+const engageLabel = {lead:'主導', support:'支援', inform:'情報共有', monitor:'モニタリング'};
+const engageClass = {lead:'engage-lead', support:'engage-support', inform:'engage-inform', monitor:'engage-monitor'};
+const lvLabel = n => n===3?'高':n===2?'中':'低';
+const lvBadge = n => n===3?'risk-high':n===2?'risk-mid':'risk-low';
+
+const shTbody = document.getElementById('sh-tbody');
+stakeholders.forEach(s => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><strong>${s.name}</strong></td>
+    <td style="font-size:12px;">${s.role}</td>
+    <td style="font-size:12px;">${s.interest}</td>
+    <td><span class="risk-badge ${lvBadge(s.influence)}">${lvLabel(s.influence)}</span></td>
+    <td><span class="risk-badge ${lvBadge(s.concern)}">${lvLabel(s.concern)}</span></td>
+    <td><span class="engage-chip ${engageClass[s.engage]}">${engageLabel[s.engage]}</span></td>
+    <td style="font-size:12px;">${s.comm}</td>
+    <td style="font-size:12px;">${s.freq}</td>
+  `;
+  shTbody.appendChild(tr);
+});
+
+// Stakeholder Matrix
+const quadMap = {
+  'hi-hi': document.getElementById('shq-hi-hi'),
+  'hi-lo': document.getElementById('shq-hi-lo'),
+  'lo-hi': document.getElementById('shq-lo-hi'),
+  'lo-lo': document.getElementById('shq-lo-lo'),
+};
+stakeholders.forEach(s => {
+  const inf = s.influence >= 2 ? 'hi' : 'lo';
+  const con = s.concern  >= 2 ? 'hi' : 'lo';
+  const key = `${inf}-${con}`;
+  if(quadMap[key]){
+    const dot = document.createElement('span');
+    dot.className = 'sh-dot';
+    dot.innerHTML = `<span>${s.name}</span>`;
+    quadMap[key].appendChild(dot);
+  }
+});
+
+// ===== RISK DATA =====
+const risks = [
+  {id:'R1', name:'雨天・悪天候',        cat:'環境', prob:3, impact:3, preventive:'タープテント手配・天気予報の毎日チェック',         mitigation:'屋内バックアップ会場の確保・開催判断フロー策定', owner:'Aさん(PM)', due:'2026/06/15', status:'inprog'},
+  {id:'R2', name:'食中毒・食材品質問題', cat:'品質', prob:1, impact:3, preventive:'食材の当日調達・冷蔵保管徹底・消費期限確認',       mitigation:'最寄りの医療機関確認・保健所連絡先の共有',       owner:'Bさん',    due:'2026/06/19', status:'done'},
+  {id:'R3', name:'参加者の大量欠席',    cat:'人的', prob:2, impact:2, preventive:'参加確認フォーム送付・前日リマインド実施',          mitigation:'食材・費用を参加人数で再計算・プラン縮小手順',   owner:'Eさん(PMO)',due:'2026/06/19', status:'pending'},
+  {id:'R4', name:'機材レンタル不備',    cat:'調達', prob:1, impact:3, preventive:'予約確認書の取得・前日に業者へ確認連絡',           mitigation:'代替レンタル業者リスト作成・簡易調理への切替',   owner:'Bさん',    due:'2026/06/18', status:'inprog'},
+  {id:'R5', name:'予算超過',            cat:'財務', prob:2, impact:2, preventive:'購入前の見積もり共有・予備費¥3,000設定',           mitigation:'優先度の低い品目カット・費用分担の見直し',       owner:'Eさん(PMO)',due:'2026/06/17', status:'done'},
+  {id:'R6', name:'炭・燃料不足',        cat:'調達', prob:1, impact:2, preventive:'使用量より20%増しで発注（計3kg）',                mitigation:'近隣ホームセンターで追加購入・着火剤で補完',     owner:'Bさん',    due:'2026/06/19', status:'done'},
+  {id:'R7', name:'火傷・怪我・事故',    cat:'安全', prob:2, impact:3, preventive:'耐熱グローブ・消火器確認・安全ブリーフィング実施',  mitigation:'救急セット配置・119番通報フローの周知',         owner:'Cさん',    due:'2026/06/20', status:'pending'},
+  {id:'R8', name:'場所・会場確保失敗',  cat:'環境', prob:1, impact:3, preventive:'早期予約（イベント2週間前）・予約確認書取得',        mitigation:'近隣公園・第二候補地への切替連絡',              owner:'Aさん(PM)', due:'2026/06/10', status:'done'},
+];
+
+const scoreClass = s => s>=9?'risk-score-high':s>=6?'risk-score-mid':'risk-score-low';
+const probLabel  = p => p===3?'高':'中低'[3-p-1]||'低';
+const probBadge  = p => p===3?'risk-high':p===2?'risk-mid':'risk-low';
+const statusHtml = s => s==='done'?'<span class="status-chip status-done">対応済</span>':s==='inprog'?'<span class="status-chip status-inprog">対応中</span>':'<span class="status-chip status-pending">未対応</span>';
+
+const riskTbody = document.getElementById('risk-tbody');
+risks.forEach(r => {
+  const score = r.prob * r.impact;
+  const probL = r.prob===3?'高':r.prob===2?'中':'低';
+  const impL  = r.impact===3?'高':r.impact===2?'中':'低';
+  // Due date color
+  const due = new Date(r.due.replace(/\//g,'-'));
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dueColor = due < today ? 'color:#c0392b;font-weight:700;' : due - today < 3*86400000 ? 'color:#e67e22;font-weight:700;' : '';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><strong>${r.id}</strong></td>
+    <td style="min-width:110px;">${r.name}</td>
+    <td><span class="chip">${r.cat}</span></td>
+    <td><span class="risk-badge ${probBadge(r.prob)}">${probL}</span></td>
+    <td><span class="risk-badge ${probBadge(r.impact)}">${impL}</span></td>
+    <td><span class="${scoreClass(score)}">${score}</span></td>
+    <td style="font-size:11px;min-width:140px;">${r.preventive}</td>
+    <td style="font-size:11px;min-width:140px;">${r.mitigation}</td>
+    <td><span class="chip">${r.owner}</span></td>
+    <td style="font-size:12px;white-space:nowrap;${dueColor}">${r.due}</td>
+    <td>${statusHtml(r.status)}</td>
+  `;
+  riskTbody.appendChild(tr);
+});
+
+// Risk Matrix 3×3
+// rows: prob 3(top)→1(bottom), cols: impact 1(left)→3(right)
+const matrix = document.getElementById('risk-matrix');
+const cellColorMap = {
+  '33':'cell-99','32':'cell-96','31':'cell-93',
+  '23':'cell-69','22':'cell-66','21':'cell-63',
+  '13':'cell-39','12':'cell-36','11':'cell-33',
+};
+const cells = {}; // key: "prob_impact"
+for(let prob=3;prob>=1;prob--){
+  for(let imp=1;imp<=3;imp++){
+    const cell = document.createElement('div');
+    const key = `${prob}${imp}`;
+    cell.className = `matrix-cell ${cellColorMap[key]||''}`;
+    cell.dataset.key = `${prob}_${imp}`;
+    cells[`${prob}_${imp}`] = cell;
+    matrix.appendChild(cell);
+  }
+}
+// Plot risks
+risks.forEach(r => {
+  const key = `${r.prob}_${r.impact}`;
+  if(cells[key]){
+    let wrap = cells[key].querySelector('.dots-wrap');
+    if(!wrap){ wrap=document.createElement('div'); wrap.className='dots-wrap'; cells[key].appendChild(wrap); }
+    const dot = document.createElement('div');
+    dot.className = 'risk-dot';
+    dot.textContent = r.id;
+    dot.dataset.tip = r.name;
+    dot.title = r.name;
+    wrap.appendChild(dot);
+  }
+});
+// Add score label to empty cells
+for(let prob=3;prob>=1;prob--){
+  for(let imp=1;imp<=3;imp++){
+    const key=`${prob}_${imp}`;
+    if(cells[key]&&!cells[key].querySelector('.dots-wrap')){
+      const lbl=document.createElement('div');
+      lbl.style.cssText='font-size:18px;font-weight:700;color:rgba(255,255,255,0.4);';
+      lbl.textContent=prob*imp;
+      cells[key].appendChild(lbl);
+    }
+  }
+}
+
+// ===== PERSON BAR =====
+new Chart(document.getElementById('personChart').getContext('2d'), {
+  type:'bar',
+  data:{
+    labels:['Aさん(PM)','Bさん(調達)','Cさん(フィールド)','Dさん(シェフ)','Eさん(PMO)','共通'],
+    datasets:[{
+      label:'担当予算 (¥)',
+      data:[300,23500,3150,4350,0,2300],
+      backgroundColor:['#fdebd0','#d5e8d4','#dae8fc','#e1d5e7','#fff2cc','#f0f2f5'],
+      borderColor:    ['#e67e22','#27ae60','#2980b9','#8e44ad','#f0c040','#aaa'],
+      borderWidth:2, borderRadius:6,
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>` ¥${ctx.parsed.y.toLocaleString()}` } } },
+    scales:{
+      y:{ beginAtZero:true, ticks:{ callback:v=>'¥'+v.toLocaleString(),font:{size:10} }, grid:{color:'#f0f2f5'} },
+      x:{ grid:{display:false}, ticks:{font:{size:11}} }
+    }
+  }
+});
+</script>
+</body>
+</html>
