@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロジェクト ダッシュボード｜N2 ASU マルチプロジェクト</title>
+<style>
+  :root {
+    --al-blue: #003b8e;
+    --al-light: #0072ce;
+    --al-accent: #00a3e0;
+    --bg: #f5f7fb;
+    --card: #ffffff;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --green: #16a34a;
+    --yellow: #d97706;
+    --red: #dc2626;
+    --orange: #ea580c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', 'Hiragino Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, var(--al-blue) 0%, var(--al-light) 100%); color: white; padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .header-left h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+  .header-left p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .header-right { text-align: right; font-size: 11px; opacity: 0.85; }
+  .al-logo { display: flex; align-items: center; gap: 8px; }
+  .al-logo span { font-size: 11px; font-weight: 600; letter-spacing: 1px; opacity: 0.9; }
+
+  /* Tabs */
+  .tab-bar { background: white; border-bottom: 2px solid var(--border); padding: 0 24px; display: flex; gap: 4px; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .tab { padding: 12px 18px; cursor: pointer; border-bottom: 3px solid transparent; font-size: 12px; font-weight: 600; color: var(--muted); transition: all 0.2s; white-space: nowrap; }
+  .tab:hover { color: var(--al-blue); }
+  .tab.active { color: var(--al-blue); border-bottom-color: var(--al-blue); }
+
+  /* Content */
+  .content { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .card { background: var(--card); border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border: 1px solid var(--border); }
+  .card-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .card-value { font-size: 22px; font-weight: 700; color: var(--al-blue); }
+  .card-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .card.green .card-value { color: var(--green); }
+  .card.yellow .card-value { color: var(--yellow); }
+  .card.red .card-value { color: var(--red); }
+
+  /* Section */
+  .section { background: var(--card); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border: 1px solid var(--border); }
+  .section h2 { font-size: 14px; font-weight: 700; color: var(--al-blue); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+
+  /* Project badges */
+  .proj-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .proj-card { background: var(--card); border-radius: 10px; padding: 16px 18px; border: 2px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.07); transition: border-color 0.2s; }
+  .proj-card:hover { border-color: var(--al-accent); }
+  .proj-title { font-size: 13px; font-weight: 700; color: var(--al-blue); margin-bottom: 6px; }
+  .proj-meta { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .progress-bar-wrap { background: #e8edf5; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 4px; }
+  .progress-bar { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--al-light), var(--al-accent)); }
+  .progress-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+  .status-badge.in-progress { background: #dbeafe; color: #1d4ed8; }
+  .status-badge.on-hold { background: #fef3c7; color: #92400e; }
+  .status-badge.planning { background: #f0fdf4; color: #166534; }
+
+  /* Gantt */
+  .gantt-wrap { overflow-x: auto; }
+  .gantt-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  .gantt-table th { background: var(--al-blue); color: white; padding: 8px 10px; font-size: 11px; font-weight: 600; text-align: left; white-space: nowrap; }
+  .gantt-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 11px; vertical-align: middle; }
+  .gantt-table tr:nth-child(even) td { background: #f9fafc; }
+  .gantt-table tr:hover td { background: #eff4ff; }
+  .phase-row td { font-weight: 700; background: #e8edf5 !important; color: var(--al-blue); }
+  .wbs-bar-cell { width: 260px; }
+  .wbs-bar { height: 14px; border-radius: 3px; position: relative; display: flex; align-items: center; }
+  .wbs-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--al-light), var(--al-accent)); }
+  .wbs-bar-complete { background: linear-gradient(90deg, var(--green), #22c55e); }
+  .wbs-bar-notstarted { background: #cbd5e1; }
+  .pct-label { font-size: 10px; color: var(--muted); margin-left: 6px; white-space: nowrap; }
+  .tag-complete { background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+  .tag-progress { background: #dbeafe; color: #1e40af; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+  .tag-notstart { background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+
+  /* S-Curve */
+  .chart-container { position: relative; height: 300px; }
+  canvas { max-width: 100%; }
+
+  /* Org Chart */
+  .org-wrap { overflow-x: auto; padding: 10px 0; }
+  .org-tree { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .org-level { display: flex; justify-content: center; gap: 20px; position: relative; }
+  .org-box { background: var(--card); border: 2px solid var(--al-blue); border-radius: 8px; padding: 10px 14px; text-align: center; min-width: 130px; position: relative; }
+  .org-box.highlight { background: var(--al-blue); color: white; }
+  .org-box.highlight .org-name { color: white; }
+  .org-box.highlight .org-role { color: rgba(255,255,255,0.8); }
+  .org-box.pmo { border-color: #d97706; background: #fffbeb; }
+  .org-box.pmo .org-name { color: #92400e; }
+  .org-connector { text-align: center; height: 30px; position: relative; }
+  .org-connector::before { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: var(--al-blue); }
+  .org-name { font-weight: 700; font-size: 12px; color: var(--al-blue); }
+  .org-role { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .org-budget { font-size: 10px; color: var(--al-light); font-weight: 600; margin-top: 3px; }
+  .org-horiz { display: flex; justify-content: center; gap: 16px; }
+  .org-horiz-line { height: 2px; background: var(--al-blue); position: absolute; top: 0; }
+
+  /* Risk */
+  .risk-matrix { display: grid; grid-template-columns: 40px repeat(3, 1fr); grid-template-rows: repeat(3, 1fr) 40px; gap: 4px; height: 260px; margin-bottom: 14px; }
+  .risk-cell { border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-direction: column; gap: 4px; padding: 6px; text-align: center; }
+  .risk-high { background: #fee2e2; border: 1px solid #fca5a5; }
+  .risk-med { background: #fef3c7; border: 1px solid #fcd34d; }
+  .risk-low { background: #dcfce7; border: 1px solid #86efac; }
+  .risk-critical { background: #ef4444; color: white; }
+  .risk-axis-label { font-size: 10px; color: var(--muted); display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; }
+  .risk-axis-bottom { font-size: 10px; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+  .risk-dot { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: white; cursor: pointer; margin: 1px; }
+  .risk-table { width: 100%; border-collapse: collapse; }
+  .risk-table th { background: var(--al-blue); color: white; padding: 7px 10px; font-size: 11px; font-weight: 600; text-align: left; }
+  .risk-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .risk-table tr:hover td { background: #eff4ff; }
+  .risk-high-badge { background: #fee2e2; color: #991b1b; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+  .risk-med-badge { background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+  .risk-low-badge { background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+
+  /* Stakeholder matrix */
+  .sh-matrix { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; height: 220px; border: 2px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .sh-quad { padding: 10px; font-size: 10px; font-weight: 600; display: flex; flex-direction: column; gap: 6px; }
+  .sh-quad.top-left { background: #fef9ee; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .sh-quad.top-right { background: #eff8ff; border-bottom: 1px solid var(--border); }
+  .sh-quad.bottom-left { background: #f9fafb; border-right: 1px solid var(--border); }
+  .sh-quad.bottom-right { background: #f0fdf4; }
+  .sh-quad-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
+  .sh-person { display: inline-flex; align-items: center; gap: 4px; background: white; border: 1px solid var(--border); border-radius: 6px; padding: 3px 7px; font-size: 10px; }
+  .sh-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Table */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th { background: var(--al-blue); color: white; padding: 8px 10px; font-size: 11px; font-weight: 600; text-align: left; }
+  .data-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .data-table tr:hover td { background: #eff4ff; }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .header { flex-direction: column; gap: 8px; }
+    .content { padding: 12px; }
+    .cards { grid-template-columns: 1fr 1fr; }
+    .tab-bar { overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="al-logo">
+      <span>🌀 AIR LIQUIDE JAPAN</span>
+    </div>
+    <h1>N2 ASU マルチプロジェクト ダッシュボード</h1>
+    <p>PED（プロジェクト推進部）｜ポートフォリオ管理 · 2026年度</p>
+  </div>
+  <div class="header-right">
+    <div>更新日: <strong id="today-date"></strong></div>
+    <div style="margin-top:4px;">作成: 犬塚大輔 (PMOサポート)</div>
+    <div style="margin-top:4px; font-size:10px; opacity:0.7;">※ このダッシュボードはデモ用サンプルです</div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('overview')">📊 概要</div>
+  <div class="tab" onclick="showTab('wbs')">📋 WBS / ガント</div>
+  <div class="tab" onclick="showTab('scurve')">📈 Sカーブ</div>
+  <div class="tab" onclick="showTab('org')">🏗 組織図</div>
+  <div class="tab" onclick="showTab('risk')">⚠️ リスク</div>
+  <div class="tab" onclick="showTab('stakeholder')">🤝 ステークホルダー</div>
+</div>
+
+<div class="content">
+
+  <!-- ===== OVERVIEW TAB ===== -->
+  <div class="tab-content active" id="tab-overview">
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">アクティブ案件数</div>
+        <div class="card-value">4</div>
+        <div class="card-sub">建設2件 · 移設2件</div>
+      </div>
+      <div class="card yellow">
+        <div class="card-label">PEDチーム稼働率</div>
+        <div class="card-value">≥120%</div>
+        <div class="card-sub">3名体制で4案件並走中</div>
+      </div>
+      <div class="card">
+        <div class="card-label">完了マイルストーン</div>
+        <div class="card-value">12 / 31</div>
+        <div class="card-sub">全案件合算</div>
+      </div>
+      <div class="card red">
+        <div class="card-label">要注意リスク</div>
+        <div class="card-value">6</div>
+        <div class="card-sub">High 2件 · Medium 4件</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">PMOサポート効果</div>
+        <div class="card-value">試行中</div>
+        <div class="card-sub">月4日 · バックオフィス支援</div>
+      </div>
+    </div>
+
+    <div class="proj-grid">
+      <div class="proj-card">
+        <div class="proj-title">🏭 熊本2期 N2 PSAプラント建設</div>
+        <div class="proj-meta">担当: 古越 裕和 ｜ 兵庫・熊本 ｜ 2026/01 – 2027/03</div>
+        <div style="margin-bottom:6px;"><span class="status-badge in-progress">In Progress</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:32%"></div></div>
+        <div class="progress-label"><span>全体進捗</span><span>32%</span></div>
+        <div style="margin-top:8px; font-size:11px; color: var(--muted);">
+          現在フェーズ: <strong style="color:var(--text)">調達 / 基礎工事</strong><br>
+          次マイルストーン: 機器据付 (2026/08)
+        </div>
+      </div>
+
+      <div class="proj-card">
+        <div class="proj-title">💻 Micron広島 N2 ASU建設</div>
+        <div class="proj-meta">担当: 春山 亮太 ｜ 広島 ｜ 2025/10 – 2026/12</div>
+        <div style="margin-bottom:6px;"><span class="status-badge in-progress">In Progress</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:55%"></div></div>
+        <div class="progress-label"><span>全体進捗</span><span>55%</span></div>
+        <div style="margin-top:8px; font-size:11px; color: var(--muted);">
+          現在フェーズ: <strong style="color:var(--text)">コンストラクション</strong><br>
+          次マイルストーン: 配管工事完了 (2026/07)
+        </div>
+      </div>
+
+      <div class="proj-card">
+        <div class="proj-title">🔄 小型プラント移設 A (兵庫→熊本)</div>
+        <div class="proj-meta">担当: 大西 / 古越 ｜ 2026/04 – 2026/10</div>
+        <div style="margin-bottom:6px;"><span class="status-badge in-progress">In Progress</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:20%"></div></div>
+        <div class="progress-label"><span>全体進捗</span><span>20%</span></div>
+        <div style="margin-top:8px; font-size:11px; color: var(--muted);">
+          現在フェーズ: <strong style="color:var(--text)">引合・EPC選定</strong><br>
+          次マイルストーン: 発注完了 (2026/07)
+        </div>
+      </div>
+
+      <div class="proj-card">
+        <div class="proj-title">🔄 小型プラント移設 B (関西→関東)</div>
+        <div class="proj-meta">担当: 大西 ｜ 2026/06 – 2026/12</div>
+        <div style="margin-bottom:6px;"><span class="status-badge planning">Planning</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:8%"></div></div>
+        <div class="progress-label"><span>全体進捗</span><span>8%</span></div>
+        <div style="margin-top:8px; font-size:11px; color: var(--muted);">
+          現在フェーズ: <strong style="color:var(--text)">計画・スコープ確認</strong><br>
+          次マイルストーン: PEP承認 (2026/07)
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📅 直近30日 主要マイルストーン</h2>
+      <table class="data-table">
+        <thead><tr><th>案件</th><th>マイルストーン</th><th>予定日</th><th>担当</th><th>ステータス</th></tr></thead>
+        <tbody>
+          <tr><td>熊本2期</td><td>EPC引合仕様書 発行</td><td>2026/06/15</td><td>古越</td><td><span class="tag-progress">In Progress</span></td></tr>
+          <tr><td>Micron広島</td><td>P&ID AFC 90% 承認</td><td>2026/06/20</td><td>春山</td><td><span class="tag-progress">In Progress</span></td></tr>
+          <tr><td>移設A</td><td>EPC会社 見積比較</td><td>2026/06/28</td><td>古越/大西</td><td><span class="tag-notstart">Not Started</span></td></tr>
+          <tr><td>Micron広島</td><td>配管材料 FAT</td><td>2026/07/05</td><td>春山</td><td><span class="tag-notstart">Not Started</span></td></tr>
+          <tr><td>熊本2期</td><td>現地工事 KOM</td><td>2026/07/10</td><td>古越</td><td><span class="tag-notstart">Not Started</span></td></tr>
+          <tr><td>移設B</td><td>PEP 承認</td><td>2026/07/15</td><td>大西</td><td><span class="tag-notstart">Not Started</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== WBS / GANTT TAB ===== -->
+  <div class="tab-content" id="tab-wbs">
+    <div class="section">
+      <h2>📋 熊本2期 N2 PSAプラント建設 — WBS詳細</h2>
+      <div class="gantt-wrap">
+        <table class="gantt-table">
+          <thead>
+            <tr>
+              <th style="width:70px">WBS#</th>
+              <th style="width:240px">タスク名</th>
+              <th style="width:80px">担当</th>
+              <th style="width:90px">開始</th>
+              <th style="width:90px">終了</th>
+              <th style="width:50px">工期</th>
+              <th style="width:260px">進捗</th>
+              <th style="width:90px">ステータス</th>
+            </tr>
+          </thead>
+          <tbody id="wbs-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== S-CURVE TAB ===== -->
+  <div class="tab-content" id="tab-scurve">
+    <div class="section">
+      <h2>📈 熊本2期 — 累積コスト & 累積WV（Sカーブ）</h2>
+      <div class="chart-container">
+        <canvas id="scurveChart"></canvas>
+      </div>
+    </div>
+    <div class="section">
+      <h2>📊 フェーズ別 コスト・WV サマリー</h2>
+      <table class="data-table">
+        <thead><tr><th>フェーズ</th><th>計画コスト</th><th>WV (%)</th><th>コスト比率</th><th>ステータス</th></tr></thead>
+        <tbody>
+          <tr><td>1. プロジェクト管理 (PM)</td><td>¥8,000,000</td><td>70%</td><td>5.3%</td><td><span class="tag-progress">In Progress</span></td></tr>
+          <tr><td>2. エンジニアリング (VSA設計)</td><td>¥25,000,000</td><td>60%</td><td>16.7%</td><td><span class="tag-progress">In Progress</span></td></tr>
+          <tr><td>3. 調達 (機器・配管材料)</td><td>¥65,000,000</td><td>25%</td><td>43.3%</td><td><span class="tag-progress">In Progress</span></td></tr>
+          <tr><td>4. コンストラクション</td><td>¥45,000,000</td><td>8%</td><td>30.0%</td><td><span class="tag-progress">In Progress</span></td></tr>
+          <tr><td>5. 規制・申請</td><td>¥1,500,000</td><td>0%</td><td>1.0%</td><td><span class="tag-notstart">Not Started</span></td></tr>
+          <tr><td>6. コミッショニング & FIP</td><td>¥5,500,000</td><td>0%</td><td>3.7%</td><td><span class="tag-notstart">Not Started</span></td></tr>
+          <tr style="font-weight:700;background:#e8edf5"><td>合計</td><td>¥150,000,000</td><td>32%</td><td>100%</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== ORG CHART TAB ===== -->
+  <div class="tab-content" id="tab-org">
+    <div class="section">
+      <h2>🏗 PEDプロジェクト体制図</h2>
+
+      <div class="org-wrap">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+
+          <!-- Top -->
+          <div style="display:flex; justify-content:center;">
+            <div class="org-box highlight">
+              <div class="org-name">古越 裕和</div>
+              <div class="org-role">PED マネージャー</div>
+              <div class="org-budget" style="color:rgba(255,255,255,0.8)">熊本2期 担当</div>
+            </div>
+          </div>
+          <div style="height:24px; width:2px; background:var(--al-blue); margin:0 auto;"></div>
+
+          <!-- Mid row -->
+          <div style="display:flex; gap:40px; position:relative;">
+            <div class="org-box">
+              <div class="org-name">大西 氏</div>
+              <div class="org-role">シニア PM</div>
+              <div class="org-budget">Art 案件 / 移設B</div>
+            </div>
+            <div class="org-box pmo">
+              <div class="org-name">犬塚 大輔</div>
+              <div class="org-role" style="color:#92400e">🔶 PMO サポート</div>
+              <div class="org-budget" style="color:#b45309">月4日 バックオフィス</div>
+            </div>
+            <div class="org-box">
+              <div class="org-name">春山 亮太</div>
+              <div class="org-role">PM / エンジニア</div>
+              <div class="org-budget">Micron 広島 担当</div>
+            </div>
+          </div>
+          <div style="height:24px; width:2px; background:var(--al-blue); margin:0 auto;"></div>
+
+          <!-- Bottom row -->
+          <div style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
+            <div class="org-box" style="min-width:120px;">
+              <div class="org-name">EPC 業者</div>
+              <div class="org-role">現地工事</div>
+              <div class="org-budget">熊本 / 兵庫</div>
+            </div>
+            <div class="org-box" style="min-width:120px;">
+              <div class="org-name">住友精化</div>
+              <div class="org-role">PSA機器 供給</div>
+              <div class="org-budget">主要ベンダー</div>
+            </div>
+            <div class="org-box" style="min-width:120px;">
+              <div class="org-name">機器ベンダー</div>
+              <div class="org-role">圧縮機・バルク等</div>
+              <div class="org-budget">複数社</div>
+            </div>
+            <div class="org-box" style="min-width:120px;">
+              <div class="org-name">顧客先</div>
+              <div class="org-role">Micron / TG他</div>
+              <div class="org-budget">承認・検収</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; padding:14px; background:#fffbeb; border-radius:8px; border:1px solid #fcd34d;">
+        <div style="font-weight:700; color:#92400e; margin-bottom:6px;">🔶 犬塚PMOサポートが担当する領域</div>
+        <div style="font-size:12px; color:#78350f; line-height:1.7;">
+          ✅ 全案件横断の進捗・リスクダッシュボード更新（本資料）<br>
+          ✅ EPC引合書類・仕様書のレビューと品質担保<br>
+          ✅ 発注管理・スケジュール管理の標準化<br>
+          ✅ 定例報告書の作成・テンプレート整備<br>
+          ✅ 古越さん・大西さん・春山さんが現場/技術判断に集中できる体制の構築
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RISK TAB ===== -->
+  <div class="tab-content" id="tab-risk">
+    <div class="section">
+      <h2>⚠️ リスクマトリクス（全案件）</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;">
+        <div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:8px;">発生確率（横軸）× 影響度（縦軸）</div>
+          <div id="risk-matrix-vis"></div>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--al-blue);">凡例</div>
+          <div style="display:flex; flex-direction:column; gap:6px; font-size:11px;">
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:16px;height:16px;border-radius:3px;background:#ef4444;"></div> 重大リスク（スコア 9）</div>
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:16px;height:16px;border-radius:3px;background:#f97316;"></div> 高リスク（スコア 6）</div>
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:16px;height:16px;border-radius:3px;background:#eab308;"></div> 中リスク（スコア 4）</div>
+            <div style="display:flex; align-items:center; gap:8px;"><div style="width:16px;height:16px;border-radius:3px;background:#22c55e;"></div> 低リスク（スコア 1〜3）</div>
+          </div>
+          <div style="margin-top:14px; font-size:12px; font-weight:600; margin-bottom:8px; color:var(--al-blue);">リスク番号凡例</div>
+          <div id="risk-legend" style="font-size:11px; display:flex; flex-direction:column; gap:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>⚠️ リスク一覧</h2>
+      <table class="risk-table">
+        <thead>
+          <tr>
+            <th>No</th><th>リスク名</th><th>案件</th><th>カテゴリ</th>
+            <th>確率</th><th>影響</th><th>スコア</th>
+            <th>対策</th><th>担当</th><th>ステータス</th>
+          </tr>
+        </thead>
+        <tbody id="risk-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== STAKEHOLDER TAB ===== -->
+  <div class="tab-content" id="tab-stakeholder">
+    <div class="section">
+      <h2>🤝 ステークホルダー一覧</h2>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>名前</th><th>会社/部門</th><th>役割・立場</th>
+            <th>主な関心事</th><th>影響力</th><th>関心度</th><th>関与タイプ</th><th>コミュニケーション方法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>古越 裕和</strong></td><td>ALJ PED</td><td>PM / 意思決定者</td><td>工期・コスト・安全</td><td>高</td><td>高</td><td>Key Player</td><td>週次定例 / Smartsheet</td></tr>
+          <tr><td><strong>大西 氏</strong></td><td>ALJ PED</td><td>シニアPM</td><td>Art案件進捗・リソース</td><td>高</td><td>高</td><td>Key Player</td><td>週次定例</td></tr>
+          <tr><td><strong>春山 亮太</strong></td><td>ALJ PED</td><td>PM / エンジニア</td><td>Micron広島 技術・工程</td><td>高</td><td>高</td><td>Key Player</td><td>日次連絡 / 現場</td></tr>
+          <tr><td>犬塚 大輔</td><td>GUC (法人)</td><td>PMO サポート</td><td>透明性・管理品質向上</td><td>中</td><td>高</td><td>Keep Informed</td><td>月4日 訪問 + 報告書</td></tr>
+          <tr><td>E&C 犬童 氏</td><td>ALJ E&C</td><td>E&C 担当</td><td>EPC選定・コスト</td><td>高</td><td>中</td><td>Keep Satisfied</td><td>案件別 打合せ</td></tr>
+          <tr><td>住友精化 担当</td><td>住友精化</td><td>主要機器ベンダー</td><td>FAT・納期・仕様</td><td>中</td><td>中</td><td>Keep Informed</td><td>月次報告</td></tr>
+          <tr><td>Micron 顧客担当</td><td>Micron</td><td>顧客・エンドユーザー</td><td>N2品質・供給安定</td><td>高</td><td>低</td><td>Keep Satisfied</td><td>マイルストーン時</td></tr>
+          <tr><td>EPC 業者</td><td>建設会社</td><td>現地施工業者</td><td>施工仕様・安全</td><td>中</td><td>中</td><td>Keep Informed</td><td>現場定例</td></tr>
+          <tr><td>行政 (消防・市)</td><td>熊本市他</td><td>規制当局</td><td>高圧ガス申請・騒音</td><td>高</td><td>低</td><td>Keep Satisfied</td><td>申請書提出時</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>📊 ステークホルダーマトリクス</h2>
+      <div class="sh-matrix">
+        <div class="sh-quad top-left">
+          <div class="sh-quad-title">🔶 Keep Satisfied — 高影響・低関心</div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#f97316"></span>Micron 顧客</span></div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#f97316"></span>行政（消防・市）</span></div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#f97316"></span>E&C 犬童氏</span></div>
+        </div>
+        <div class="sh-quad top-right">
+          <div class="sh-quad-title">🌟 Key Players — 高影響・高関心</div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#2563eb"></span>古越 裕和</span></div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#2563eb"></span>大西 氏</span></div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#2563eb"></span>春山 亮太</span></div>
+        </div>
+        <div class="sh-quad bottom-left">
+          <div class="sh-quad-title">👁 Monitor — 低影響・低関心</div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#94a3b8"></span>住友精化</span></div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#94a3b8"></span>EPC 業者</span></div>
+        </div>
+        <div class="sh-quad bottom-right">
+          <div class="sh-quad-title">📢 Keep Informed — 低影響・高関心</div>
+          <div><span class="sh-person"><span class="sh-dot" style="background:#16a34a"></span>犬塚 大輔 (PMO)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ===== DATA =====
+const wbsData = [
+  { wbs:'1', name:'プロジェクト管理 (PM)', owner:'古越', start:'2026/01/05', end:'2027/03/31', dur:'450d', pct:70, status:'in-progress', level:1 },
+  { wbs:'1.1', name:'PEP (プロジェクト実行計画) 作成', owner:'古越', start:'2026/01/05', end:'2026/01/20', dur:'15d', pct:100, status:'complete', level:2 },
+  { wbs:'1.2', name:'Smartsheet 設定・ファイナライズ', owner:'犬塚(PMO)', start:'2026/01/10', end:'2026/01/25', dur:'15d', pct:100, status:'complete', level:2 },
+  { wbs:'1.3', name:'図書・レター 管理', owner:'古越', start:'2026/01/05', end:'2027/03/31', dur:'通年', pct:35, status:'in-progress', level:2 },
+  { wbs:'1.4', name:'社内 KOM', owner:'古越', start:'2026/01/15', end:'2026/01/16', dur:'1d', pct:100, status:'complete', level:2 },
+  { wbs:'1.5', name:'顧客 KOM', owner:'古越', start:'2026/01/20', end:'2026/01/21', dur:'1d', pct:100, status:'complete', level:2 },
+  { wbs:'1.6', name:'HAZOP インターフェース管理', owner:'古越', start:'2026/02/01', end:'2026/04/30', dur:'89d', pct:80, status:'in-progress', level:2 },
+  { wbs:'2', name:'エンジニアリング (VSA設計)', owner:'春山/外部', start:'2026/01/10', end:'2026/09/15', dur:'248d', pct:60, status:'in-progress', level:1 },
+  { wbs:'2.1', name:'図書リスト FIX', owner:'春山', start:'2026/01/10', end:'2026/01/20', dur:'10d', pct:100, status:'complete', level:2 },
+  { wbs:'2.2', name:'P&ID 承認 30%', owner:'春山', start:'2026/01/20', end:'2026/02/10', dur:'21d', pct:100, status:'complete', level:2 },
+  { wbs:'2.3', name:'プロセスリスク解析 (HAZOP)', owner:'春山', start:'2026/02/15', end:'2026/04/15', dur:'55d', pct:80, status:'in-progress', level:2 },
+  { wbs:'2.4', name:'P&ID 承認 60%', owner:'春山', start:'2026/04/01', end:'2026/04/30', dur:'29d', pct:60, status:'in-progress', level:2 },
+  { wbs:'2.5', name:'P&ID 承認 AFC 90%', owner:'春山', start:'2026/06/01', end:'2026/06/20', dur:'19d', pct:20, status:'in-progress', level:2 },
+  { wbs:'2.6', name:'IFC 図書リリース', owner:'春山', start:'2026/07/01', end:'2026/08/01', dur:'31d', pct:0, status:'not-started', level:2 },
+  { wbs:'3', name:'調達 (Procurement)', owner:'古越', start:'2026/01/15', end:'2026/09/15', dur:'244d', pct:25, status:'in-progress', level:1 },
+  { wbs:'3.1', name:'PSA機器 住友精化 PO発行', owner:'古越', start:'2026/01/15', end:'2026/01/30', dur:'15d', pct:100, status:'complete', level:2 },
+  { wbs:'3.2', name:'圧縮機・真空ポンプ 発注', owner:'古越', start:'2026/02/01', end:'2026/03/01', dur:'28d', pct:100, status:'complete', level:2 },
+  { wbs:'3.3', name:'EPC引合仕様書 作成・発行', owner:'古越/犬塚', start:'2026/05/01', end:'2026/06/15', dur:'45d', pct:40, status:'in-progress', level:2 },
+  { wbs:'3.4', name:'EPC 見積比較・業者選定', owner:'古越', start:'2026/06/20', end:'2026/07/15', dur:'25d', pct:0, status:'not-started', level:2 },
+  { wbs:'3.5', name:'PSA機器 工場検収 (FAT)', owner:'古越', start:'2026/06/01', end:'2026/07/20', dur:'49d', pct:10, status:'in-progress', level:2 },
+  { wbs:'3.6', name:'バックアップ設備 CED 発注', owner:'古越', start:'2026/05/01', end:'2026/07/01', dur:'61d', pct:30, status:'in-progress', level:2 },
+  { wbs:'4', name:'コンストラクション', owner:'古越/EPC', start:'2026/08/01', end:'2027/01/31', dur:'184d', pct:0, status:'not-started', level:1 },
+  { wbs:'4.1', name:'地鎮祭 / 建屋基礎工事', owner:'EPC', start:'2026/08/01', end:'2026/09/30', dur:'60d', pct:0, status:'not-started', level:2 },
+  { wbs:'4.2', name:'機器据付工事 (VSA &CED)', owner:'EPC/古越', start:'2026/09/01', end:'2026/11/15', dur:'75d', pct:0, status:'not-started', level:2 },
+  { wbs:'4.3', name:'配管工事 (VSA)', owner:'EPC', start:'2026/10/01', end:'2026/12/15', dur:'75d', pct:0, status:'not-started', level:2 },
+  { wbs:'4.4', name:'電気・計装工事 (VSA)', owner:'EPC', start:'2026/10/15', end:'2027/01/15', dur:'92d', pct:0, status:'not-started', level:2 },
+  { wbs:'5', name:'規制・申請', owner:'古越', start:'2026/09/01', end:'2026/12/01', dur:'91d', pct:0, status:'not-started', level:1 },
+  { wbs:'5.1', name:'高圧ガス申請 (CE)', owner:'古越', start:'2026/09/01', end:'2026/10/01', dur:'30d', pct:0, status:'not-started', level:2 },
+  { wbs:'5.2', name:'騒音・振動規制法 届出', owner:'古越', start:'2026/11/01', end:'2026/12/01', dur:'30d', pct:0, status:'not-started', level:2 },
+  { wbs:'6', name:'コミッショニング & FIP', owner:'古越/春山', start:'2027/01/15', end:'2027/03/31', dur:'75d', pct:0, status:'not-started', level:1 },
+  { wbs:'6.1', name:'PSSR 実施', owner:'春山', start:'2027/01/15', end:'2027/01/20', dur:'5d', pct:0, status:'not-started', level:2 },
+  { wbs:'6.2', name:'VSA コミッショニング', owner:'春山/住友', start:'2027/01/20', end:'2027/02/20', dur:'31d', pct:0, status:'not-started', level:2 },
+  { wbs:'6.3', name:'RTOR (試運転完了レポート)', owner:'古越', start:'2027/02/20', end:'2027/03/01', dur:'9d', pct:0, status:'not-started', level:2 },
+  { wbs:'6.4', name:'FIP 送ガス / 資本化', owner:'古越', start:'2027/03/01', end:'2027/03/31', dur:'30d', pct:0, status:'not-started', level:2 },
+];
+
+const riskData = [
+  { no:'R1', name:'関西エリア EPC業者 確保困難', proj:'熊本2期', cat:'調達', prob:3, impact:3, score:9, action:'早期引合・複数社並行見積', mitigation:'代替EPC業者リスト作成', owner:'古越/犬塚', status:'Ongoing' },
+  { no:'R2', name:'住友精化 PSA機器 納期遅延', proj:'熊本2期', cat:'調達', prob:2, impact:3, score:6, action:'FAT前倒し・納期監視強化', mitigation:'バッファ工期 確保', owner:'古越', status:'On Hold' },
+  { no:'R3', name:'高圧ガス申請 審査遅延', proj:'熊本2期', cat:'規制', prob:2, impact:3, score:6, action:'申請書類 早期提出', mitigation:'行政との事前相談', owner:'古越', status:'On Hold' },
+  { no:'R4', name:'現地工事 施工図承認 遅延', proj:'Micron広島', cat:'エンジニアリング', prob:2, impact:2, score:4, action:'レビュープロセス標準化', mitigation:'週次レビュー体制', owner:'春山', status:'Ongoing' },
+  { no:'R5', name:'顧客変更要求 (MOC) 増加', proj:'全案件', cat:'スコープ', prob:3, impact:2, score:6, action:'Change Management手順の徹底', mitigation:'MOCログ管理・コスト追跡', owner:'犬塚(PMO)', status:'Ongoing' },
+  { no:'R6', name:'PEDチーム 工数オーバー', proj:'全案件', cat:'リソース', prob:3, impact:3, score:9, action:'PMOサポート投入・タスク優先順位化', mitigation:'外部リソース活用', owner:'古越/犬塚', status:'Ongoing' },
+  { no:'R7', name:'圧縮機 スペック未達 (FAT不合格)', proj:'熊本2期', cat:'品質', prob:1, impact:3, score:3, action:'仕様書レビュー強化', mitigation:'再発注工期バッファ', owner:'春山', status:'Identified' },
+  { no:'R8', name:'移設工事 既設配管 干渉', proj:'移設A', cat:'技術', prob:2, impact:2, score:4, action:'3D scan / 事前調査徹底', mitigation:'工事前に干渉確認', owner:'大西', status:'Identified' },
+];
+
+// ===== RENDER WBS =====
+function renderWBS() {
+  const tbody = document.getElementById('wbs-tbody');
+  tbody.innerHTML = '';
+  wbsData.forEach(r => {
+    const tr = document.createElement('tr');
+    if (r.level === 1) tr.className = 'phase-row';
+    const statusHtml = r.status === 'complete' ? '<span class="tag-complete">Complete</span>'
+      : r.status === 'in-progress' ? '<span class="tag-progress">In Progress</span>'
+      : '<span class="tag-notstart">Not Started</span>';
+    const barClass = r.status === 'complete' ? 'wbs-bar-complete' : r.status === 'not-started' ? 'wbs-bar-notstarted' : 'wbs-bar-fill';
+    const barWidth = r.pct + '%';
+    const indent = r.level === 2 ? 'padding-left:18px;' : '';
+    tr.innerHTML = `
+      <td>${r.wbs}</td>
+      <td style="${indent}">${r.name}</td>
+      <td>${r.owner}</td>
+      <td>${r.start}</td>
+      <td>${r.end}</td>
+      <td style="text-align:center">${r.dur}</td>
+      <td class="wbs-bar-cell">
+        <div style="display:flex;align-items:center;">
+          <div style="flex:1;background:#e8edf5;border-radius:3px;height:14px;overflow:hidden;">
+            <div class="${barClass}" style="width:${barWidth};height:100%;border-radius:3px;"></div>
+          </div>
+          <span class="pct-label">${r.pct}%</span>
+        </div>
+      </td>
+      <td>${statusHtml}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ===== RENDER RISK =====
+function renderRisk() {
+  // Table
+  const tbody = document.getElementById('risk-tbody');
+  tbody.innerHTML = '';
+  riskData.forEach(r => {
+    const scoreClass = r.score >= 9 ? 'risk-high-badge' : r.score >= 6 ? 'risk-med-badge' : 'risk-low-badge';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${r.no}</strong></td>
+      <td>${r.name}</td>
+      <td>${r.proj}</td>
+      <td>${r.cat}</td>
+      <td style="text-align:center">${r.prob}</td>
+      <td style="text-align:center">${r.impact}</td>
+      <td><span class="${scoreClass}">${r.score}</span></td>
+      <td>${r.action}</td>
+      <td>${r.owner}</td>
+      <td>${r.status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Matrix
+  const colors = {9:'#ef4444', 6:'#f97316', 4:'#eab308', 3:'#22c55e', 2:'#22c55e', 1:'#22c55e'};
+  const matrix = document.getElementById('risk-matrix-vis');
+  const cellsMap = {}; // [prob][impact] -> []
+  for(let p=1;p<=3;p++) for(let i=1;i<=3;i++) cellsMap[`${p}_${i}`]=[];
+  riskData.forEach(r => { cellsMap[`${r.prob}_${r.impact}`].push(r); });
+
+  let html = '<div style="display:grid;grid-template-columns:30px repeat(3,1fr);grid-template-rows:repeat(3,60px) 30px;gap:3px;">';
+  // Rows 3→1 (high impact at top)
+  for(let i=3;i>=1;i--) {
+    html += `<div style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);writing-mode:vertical-rl;">${i}</div>`;
+    for(let p=1;p<=3;p++) {
+      const s = i*p;
+      const bg = s>=9?'#fee2e2':s>=6?'#fff7ed':s>=4?'#fefce8':'#f0fdf4';
+      const items = cellsMap[`${p}_${i}`];
+      const dots = items.map(r=>{
+        const c = colors[r.score]||'#64748b';
+        return `<div style="width:22px;height:22px;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;margin:1px;cursor:default;" title="${r.name}">${r.no}</div>`;
+      }).join('');
+      html += `<div style="background:${bg};border-radius:5px;border:1px solid #e2e8f0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;padding:3px;">${dots}</div>`;
+    }
+  }
+  // X-axis
+  html += '<div></div>';
+  for(let p=1;p<=3;p++) html += `<div style="text-align:center;font-size:10px;color:var(--muted);padding-top:4px;">${p}</div>`;
+  html += '</div>';
+  html += '<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center;">← 発生確率 →　　（縦軸：影響度）</div>';
+  matrix.innerHTML = html;
+
+  // Legend
+  const leg = document.getElementById('risk-legend');
+  leg.innerHTML = riskData.map(r=>`<div>${r.no}: ${r.name.substring(0,20)}${r.name.length>20?'…':''}</div>`).join('');
+}
+
+// ===== S-CURVE =====
+function renderSCurve() {
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月','1月\n(27)','2月\n(27)','3月\n(27)'];
+  const planned = [3,8,18,30,42,52,62,70,78,85,90,94,97,99,100];
+  const actual =  [2,7,16,28,40,50, null, null, null, null, null, null, null, null, null];
+  const wv =      [2,6,14,25,35,46, null, null, null, null, null, null, null, null, null];
+
+  const ctx = document.getElementById('scurveChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: '計画コスト累積 (%)',
+          data: planned,
+          borderColor: '#003b8e',
+          backgroundColor: 'rgba(0,59,142,0.08)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+        },
+        {
+          label: '実績コスト累積 (%)',
+          data: actual,
+          borderColor: '#0072ce',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.4,
+          pointRadius: 4,
+          borderDash: [],
+        },
+        {
+          label: '累積WV (%)',
+          data: wv,
+          borderColor: '#16a34a',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.4,
+          pointRadius: 4,
+          borderDash: [5,3],
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y ?? '—'}%` } },
+        annotation: {
+          annotations: {
+            today: {
+              type: 'line',
+              xMin: 5, xMax: 5,
+              borderColor: '#dc2626',
+              borderWidth: 1,
+              borderDash: [4,4],
+              label: { content: '現在 (6月)', enabled: true, position: 'start', font: { size: 10 }, color: '#dc2626' }
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          title: { display: true, text: '累積 (%)', font: { size: 11 } },
+          ticks: { callback: v => v + '%' }
+        },
+        x: { title: { display: true, text: '2026年', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// ===== TAB SWITCHING =====
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`#tab-${name}`).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'scurve' && !window._scurveRendered) {
+    renderSCurve();
+    window._scurveRendered = true;
+  }
+}
+
+// ===== TODAY =====
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('ja-JP');
+
+// ===== INIT =====
+renderWBS();
+renderRisk();
+</script>
+</body>
+</html>
